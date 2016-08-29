@@ -1,0 +1,492 @@
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <title>Stock Search</title>
+        <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+        <link href="https://gitcdn.github.io/bootstrap-toggle/2.2.0/css/bootstrap-toggle.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha3841q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+        <link rel="stylesheet" href="style.css" type="text/css">
+        <link rel="stylesheet" type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1/themes/smoothness/jquery-ui.css">
+        <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
+        <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1/jquery-ui.min.js"></script>
+        <script src="https://code.highcharts.com/stock/highstock.js"></script>
+        <script src="https://code.highcharts.com/stock/modules/exporting.js"></script> 
+        <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+        <script src="https://gitcdn.github.io/bootstrap-toggle/2.2.0/js/bootstrap-toggle.min.js"></script> 
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.12.0/moment.min.js"></script>
+        
+        <script type="text/javascript">
+            var lastPrice;
+            var change;
+            var changePercent;
+            
+            $(document).ready(function(){
+                $.ajaxSettings.traditional = true;
+                //activate carousel
+                $("#carousel-generic").carousel();
+                $(".right").click(function(){
+                $("#carousel-generic").carousel("next");
+                });
+                
+                //autocomplete
+                $("#symbolName").keydown(function(e)                       
+                {
+                    name = $("#symbolName").val();
+                    $("#symbolName").autocomplete({
+                        source : function(request, response){
+                            $.ajax({
+                               url: "index_v1.php",
+                               dataType: "json",
+                               data: {
+                                      input: name
+                                     },
+                               success: function(data) {
+                                        response($.map(data, function(item) {
+								        return {
+									    label: item.Symbol+" - "+item.Name + " (" +item.Exchange+ ")"
+                                      }
+                                    }));
+                                    },
+                                error: function(){
+                                        console.log("Here");
+                                       }
+                            });
+                        },
+                        minLength:1,
+                        open: function(){
+                        $(this).removeClass( "ui-corner-all" ).addClass( "ui-corner-top" );
+                        },
+                        close: function(){
+                        $( this ).removeClass( "ui-corner-top" ).addClass( "ui-corner-all" );
+                        }
+                    });  
+                });
+                
+                //on submit of form
+                $('#form').on('submit', function(e){
+                    e.preventDefault();
+                    var symVal = $("#symbolName").val();
+                    sym = symVal.split(" - ",1);
+                    symName = symVal.split(" - ",2);
+                    company = symName.toString().split(" (",1);
+                    c = company.toString().split(",",2);
+                    cName = c[1];
+                    
+                    $.ajax({
+                            url: "index_v1.php",
+                            data: {
+                                    symbolName : symVal
+                                  },
+                            type: 'GET',
+                            success: function(data) {
+                                    var json = $.parseJSON(data);
+                                    if(json.Status == "SUCCESS")
+                                        {
+                                            lastPrice = json['LastPrice'].toFixed(2);
+                                            change = json['Change'].toFixed(2);
+                                            changePercent = json['ChangePercent'].toFixed(2);
+                                            var dateTime = json['Timestamp'];
+                                            var marketCap = json['MarketCap'];
+                                            var mCap = marketCap/1000000000;
+                                            mCap = mCap.toFixed(2);
+                                            var changeYTD = json['ChangeYTD'];
+                                            changeYTD = changeYTD.toFixed(2);
+                                            var changePYTD = json['ChangePercentYTD'];
+                                            changePYTD = changePYTD.toFixed(2);
+                                    
+                                            //check if change is positive or negative
+                                            if(change > 0)
+                                                {
+                                                    if(mCap < 0.01)
+                                                        {
+                                                        mCap = mCap * 1000;
+                                                        mCap = mCap.toFixed(2);
+                                                        if(changePYTD > 0)
+                                                            {
+                                                              document.getElementById('current').innerHTML = 
+                                                        "<table class='table table-nonfluid table-striped table-responsive'><tr><td>Name</td><td>"+json['Name']+"</td></tr><tr><td>Symbol</td><td>"+json['Symbol']+"</td></tr><tr><td>Last Price</td><td>$ "+lastPrice+"</td></tr><tr><td>Change(Change Percent)</td><td>"+change+" ("+changePercent+"%) <img src='http://cs-server.usc.edu:45678/hw/hw8/images/up.png' alt='Image cannot be loaded!'></td></tr><tr><td>Time and Date</td><td>"+moment(dateTime).format('MMMM Do YYYY, h:mm:ss a')+"</td></tr><tr><td>Market Cap</td><td>"+mCap+" Million</td></tr><tr><td>Volume</td><td>"+json['Volume']+"</td></tr><tr><td>Change YTD(Change Percent YTD)</td><td>"+changeYTD+" ("+changePYTD+"%) <img src='http://cs-server.usc.edu:45678/hw/hw8/images/up.png' alt='Image cannot be loaded!'></td></tr><tr><td>High Price</td><td>$ "+json['High']+"</td></tr><tr><td>Low Price</td><td>$ "+json['Low']+"</td></tr><tr><td>Open Price</td><td>$ "+json['Open']+"</td></tr></table>";
+                                                            }
+                                                        else
+                                                            {
+                                                              document.getElementById('current').innerHTML =
+                                                        "<table class='table table-nonfluid table-striped table-responsive'><tr><td>Name</td><td>"+json['Name']+"</td></tr><tr><td>Symbol</td><td>"+json['Symbol']+"</td></tr><tr><td>Last Price</td><td>$ "+lastPrice+"</td></tr><tr><td>Change(Change Percent)</td><td>"+change+" ("+changePercent+"%) <img src='http://cs-server.usc.edu:45678/hw/hw8/images/up.png' alt='Image cannot be loaded!'></td></tr><tr><td>Time and Date</td><td>"+moment(dateTime).format('MMMM Do YYYY, h:mm:ss a')+"</td></tr><tr><td>Market Cap</td><td>"+mCap+" Million</td></tr><tr><td>Volume</td><td>"+json['Volume']+"</td></tr><tr><td>Change YTD(Change Percent YTD)</td><td>"+changeYTD+" ("+changePYTD+"%) <img src='http://cs-server.usc.edu:45678/hw/hw8/images/down.png' alt='Image cannot be loaded!'></td></tr><tr><td>High Price</td><td>$ "+json['High']+"</td></tr><tr><td>Low Price</td><td>$ "+json['Low']+"</td></tr><tr><td>Open Price</td><td>$ "+json['Open']+"</td></tr></table>";   
+                                                            }
+                                                        
+                                                        }
+                                                    else 
+                                                        {
+                                                        //display image for incresing or decreasing change percent YTD
+                                                        if(changePYTD > 0)
+                                                            {
+                                                            document.getElementById('current').innerHTML = 
+                                                    "<table class='table table-nonfluid table-striped table-responsive'><tr><td>Name</td><td>"+json['Name']+"</td></tr><tr><td>Symbol</td><td>"+json['Symbol']+"</td></tr><tr><td>Last Price</td><td>$ "+lastPrice+"</td></tr><tr><td>Change(Change Percent)</td><td>"+change+" ("+changePercent+"%) <img src='http://cs-server.usc.edu:45678/hw/hw8/images/up.png' alt='Image cannot be loaded!'></td></tr><tr><td>Time and Date</td><td>"+moment(dateTime).format('MMMM Do YYYY, h:mm:ss a')+"</td></tr><tr><td>Market Cap</td><td>"+mCap+" Billion</td></tr><tr><td>Volume</td><td>"+json['Volume']+"</td></tr><tr><td>Change YTD(Change Percent YTD)</td><td>"+changeYTD+" ("+changePYTD+"%) <img src='http://cs-server.usc.edu:45678/hw/hw8/images/up.png' alt='Image cannot be loaded!'></td></tr><tr><td>High Price</td><td>$ "+json['High']+"</td></tr><tr><td>Low Price</td><td>$ "+json['Low']+"</td></tr><tr><td>Open Price</td><td>$ "+json['Open']+"</td></tr></table>"; 
+                                                            }
+                                                        else
+                                                            {
+                                                            document.getElementById('current').innerHTML = 
+                                                    "<table class='table table-nonfluid table-striped table-responsive'><tr><td>Name</td><td>"+json['Name']+"</td></tr><tr><td>Symbol</td><td>"+json['Symbol']+"</td></tr><tr><td>Last Price</td><td>$ "+lastPrice+"</td></tr><tr><td>Change(Change Percent)</td><td>"+change+" ("+changePercent+"%) <img src='http://cs-server.usc.edu:45678/hw/hw8/images/up.png' alt='Image cannot be loaded!'></td></tr><tr><td>Time and Date</td><td>"+moment(dateTime).format('MMMM Do YYYY, h:mm:ss a')+"</td></tr><tr><td>Market Cap</td><td>"+mCap+" Billion</td></tr><tr><td>Volume</td><td>"+json['Volume']+"</td></tr><tr><td>Change YTD(Change Percent YTD)</td><td>"+changeYTD+" ("+changePYTD+"%) <img src='http://cs-server.usc.edu:45678/hw/hw8/images/down.png' alt='Image cannot be loaded!'></td></tr><tr><td>High Price</td><td>$ "+json['High']+"</td></tr><tr><td>Low Price</td><td>$ "+json['Low']+"</td></tr><tr><td>Open Price</td><td>$ "+json['Open']+"</td></tr></table>";   
+                                                            }
+                                                        }
+                                                }
+                                            
+                                            else
+                                                {
+                                                    if(mCap < 0.01)
+                                                        {
+                                                        mCap = mCap * 1000;
+                                                        mCap = mCap.toFixed(2);
+                                                        if(changePYTD > 0)
+                                                            {
+                                                              document.getElementById('current').innerHTML = 
+                                                        "<table class='table table-nonfluid table-striped table-responsive'><tr><td>Name</td><td>"+json['Name']+"</td></tr><tr><td>Symbol</td><td>"+json['Symbol']+"</td></tr><tr><td>Last Price</td><td>$ "+lastPrice+"</td></tr><tr><td>Change(Change Percent)</td><td>"+change+" ("+changePercent+"%) <img src='http://cs-server.usc.edu:45678/hw/hw8/images/down.png' alt='Image cannot be loaded!'></td></tr><tr><td>Time and Date</td><td>"+moment(dateTime).format('MMMM Do YYYY, h:mm:ss a')+"</td></tr><tr><td>Market Cap</td><td>"+mCap+" Million</td></tr><tr><td>Volume</td><td>"+json['Volume']+"</td></tr><tr><td>Change YTD(Change Percent YTD)</td><td>"+changeYTD+" ("+changePYTD+"%) <img src='http://cs-server.usc.edu:45678/hw/hw8/images/up.png' alt='Image cannot be loaded!'></td></tr><tr><td>High Price</td><td>$ "+json['High']+"</td></tr><tr><td>Low Price</td><td>$ "+json['Low']+"</td></tr><tr><td>Open Price</td><td>$ "+json['Open']+"</td></tr></table>";
+                                                            }
+                                                        else
+                                                            {
+                                                              document.getElementById('current').innerHTML =
+                                                        "<table class='table table-nonfluid table-striped table-responsive'><tr><td>Name</td><td>"+json['Name']+"</td></tr><tr><td>Symbol</td><td>"+json['Symbol']+"</td></tr><tr><td>Last Price</td><td>$ "+lastPrice+"</td></tr><tr><td>Change(Change Percent)</td><td>"+change+" ("+changePercent+"%) <img src='http://cs-server.usc.edu:45678/hw/hw8/images/down.png' alt='Image cannot be loaded!'></td></tr><tr><td>Time and Date</td><td>"+moment(dateTime).format('MMMM Do YYYY, h:mm:ss a')+"</td></tr><tr><td>Market Cap</td><td>"+mCap+" Million</td></tr><tr><td>Volume</td><td>"+json['Volume']+"</td></tr><tr><td>Change YTD(Change Percent YTD)</td><td>"+changeYTD+" ("+changePYTD+"%) <img src='http://cs-server.usc.edu:45678/hw/hw8/images/down.png' alt='Image cannot be loaded!'></td></tr><tr><td>High Price</td><td>$ "+json['High']+"</td></tr><tr><td>Low Price</td><td>$ "+json['Low']+"</td></tr><tr><td>Open Price</td><td>$ "+json['Open']+"</td></tr></table>";   
+                                                            }
+                                                        
+                                                        }
+                                                    else 
+                                                        {
+                                                        //display image for incresing or decreasing change percent YTD
+                                                        if(changePYTD > 0)
+                                                            {
+                                                            document.getElementById('current').innerHTML = 
+                                                    "<table class='table table-nonfluid table-striped table-responsive'><tr><td>Name</td><td>"+json['Name']+"</td></tr><tr><td>Symbol</td><td>"+json['Symbol']+"</td></tr><tr><td>Last Price</td><td>$ "+lastPrice+"</td></tr><tr><td>Change(Change Percent)</td><td>"+change+" ("+changePercent+"%) <img src='http://cs-server.usc.edu:45678/hw/hw8/images/down.png' alt='Image cannot be loaded!'></td></tr><tr><td>Time and Date</td><td>"+moment(dateTime).format('MMMM Do YYYY, h:mm:ss a')+"</td></tr><tr><td>Market Cap</td><td>"+mCap+" Billion</td></tr><tr><td>Volume</td><td>"+json['Volume']+"</td></tr><tr><td>Change YTD(Change Percent YTD)</td><td>"+changeYTD+" ("+changePYTD+"%) <img src='http://cs-server.usc.edu:45678/hw/hw8/images/up.png' alt='Image cannot be loaded!'></td></tr><tr><td>High Price</td><td>$ "+json['High']+"</td></tr><tr><td>Low Price</td><td>$ "+json['Low']+"</td></tr><tr><td>Open Price</td><td>$ "+json['Open']+"</td></tr></table>"; 
+                                                            }
+                                                        else
+                                                            {
+                                                            document.getElementById('current').innerHTML = 
+                                                    "<table class='table table-nonfluid table-striped table-responsive'><tr><td>Name</td><td>"+json['Name']+"</td></tr><tr><td>Symbol</td><td>"+json['Symbol']+"</td></tr><tr><td>Last Price</td><td>$ "+lastPrice+"</td></tr><tr><td>Change(Change Percent)</td><td>"+change+" ("+changePercent+"%) <img src='http://cs-server.usc.edu:45678/hw/hw8/images/down.png' alt='Image cannot be loaded!'></td></tr><tr><td>Time and Date</td><td>"+moment(dateTime).format('MMMM Do YYYY, h:mm:ss a')+"</td></tr><tr><td>Market Cap</td><td>"+mCap+" Billion</td></tr><tr><td>Volume</td><td>"+json['Volume']+"</td></tr><tr><td>Change YTD(Change Percent YTD)</td><td>"+changeYTD+" ("+changePYTD+"%) <img src='http://cs-server.usc.edu:45678/hw/hw8/images/down.png' alt='Image cannot be loaded!'></td></tr><tr><td>High Price</td><td>$ "+json['High']+"</td></tr><tr><td>Low Price</td><td>$ "+json['Low']+"</td></tr><tr><td>Open Price</td><td>$ "+json['Open']+"</td></tr></table>";   
+                                                            }
+                                                        }
+                                                }                                                                      
+                                        }
+                                        //put error for no stock information found
+                                        
+                                        //display image of stock from Yahoo
+                                        url = "http://chart.finance.yahoo.com/t?s="+sym+"&lang=en-US&width=400&height=300";
+                                        document.getElementById("graph").innerHTML = "<img src="+url+"alt='Image cannot be loaded!>";
+                                    },
+                            error: function(){
+                                    console.log("Error");
+                                  },
+                         });
+                    
+                    
+    var Markit = {};
+    /**
+     * Define the InteractiveChartApi.
+     * First argument is symbol (string) for the quote. Examples: AAPL, MSFT, JNJ, GOOG.
+     * Second argument is duration (int) for how many days of history to retrieve.
+     */
+    Markit.InteractiveChartApi = function(symbol,duration){
+        this.symbol = symbol;
+        this.duration = duration;
+        this.PlotChart();
+    };
+                    
+                    
+    Markit.InteractiveChartApi.prototype._fixDate = function(dateIn) {
+    var dat = new Date(dateIn);
+    return Date.UTC(dat.getFullYear(), dat.getMonth(), dat.getDate());
+    };
+
+    Markit.InteractiveChartApi.prototype._getOHLC = function(json) {
+        var dates = json.Dates || [];
+        var elements = json.Elements || [];
+        var chartSeries = [];
+
+        if (elements[0]){
+
+            for (var i = 0, datLen = dates.length; i < datLen; i++) {
+                var dat = this._fixDate( dates[i] );
+                var pointData = [
+                    dat,
+                    elements[0].DataSeries['open'].values[i],
+                    elements[0].DataSeries['high'].values[i],
+                    elements[0].DataSeries['low'].values[i],
+                    elements[0].DataSeries['close'].values[i]
+                ];
+                chartSeries.push( pointData );
+            };
+        }
+        return chartSeries;
+    };
+
+   /* Markit.InteractiveChartApi.prototype._getVolume = function(json) {
+        var dates = json.Dates || [];
+        var elements = json.Elements || [];
+        var chartSeries = [];
+
+        if (elements[1]){
+
+            for (var i = 0, datLen = dates.length; i < datLen; i++) {
+                var dat = this._fixDate( dates[i] );
+                var pointData = [
+                    dat,
+                    elements[1].DataSeries['volume'].values[i]
+                ];
+                chartSeries.push( pointData );
+            };
+        }
+        return chartSeries;
+    };*/
+
+   Markit.InteractiveChartApi.prototype.render = function(data) {
+    console.log(data);
+    // split the data set into ohlc and volume
+    var ohlc = this._getOHLC(data),
+    //volume = this._getVolume(data);
+
+    // set the allowed units for data grouping
+    groupingUnits = [[
+        'week',                         // unit name
+        [1]                             // allowed multiples
+    ], [
+        'month',
+        [1, 3, 6]
+    ]];
+
+    // create the chart
+    
+       
+ };
+
+    Markit.InteractiveChartApi.prototype.PlotChart = function(){
+
+        var params = {
+            parameters: JSON.stringify( this.getInputParams() )
+        }
+
+        //Make JSON request for timeseries data
+        $.ajax({
+            data: params,
+            url: "index_v1.php",
+            dataType: "json",
+            type: 'GET',
+            context: this,
+            success: function(json){
+                console.log("SUCCESSSS");
+                if (!json || json.Message)
+                {
+                    console.error("Error: ", json.Message);
+                    return;
+                }
+                this.render(json);
+            },
+            error: function(response,txtStatus){
+                console.log(response,txtStatus)
+            }
+        });
+    };
+
+    Markit.InteractiveChartApi.prototype.getInputParams = function(){
+        return {  
+            Normalized: false,
+            NumberOfDays: this.duration,
+            DataPeriod: "Day",
+            Elements: [
+                {
+                    Symbol: this.symbol,
+                    Type: "price",
+                    Params: ["ohlc"] 
+                }
+            ]
+        }
+    };
+                    
+    new Markit.InteractiveChartApi(sym.toString(),1095); 
+                    
+    //Google News Feed
+    $.ajax({
+       url: "https://ajax.googleapis.com/ajax/services/search/news",
+       data: {
+                v: 1.0,
+                q: sym.toString(),
+                userip: "scf.usc.edu"
+             },
+       datatType: "json",
+       type: "GET",
+       success: function(){
+              console.log("GOGGGGGGLLLEEE SUCCESSSSSS");
+              },
+       error: function(){
+              console.log("GOGGGGLLEEEEE ERRORRRRR");
+              },
+    });
+                    
+  });
+});
+        </script>
+      </head>
+    <body>
+    <script>
+        //Facebook Connect API
+            window.fbAsyncInit = function() {
+            FB.init({
+                appId      : '1515509238756566',
+                xfbml      : true,
+                status     : true,
+                version    : 'v2.5'
+             });
+            };
+            
+            //load SDK asynchronously
+            (function(d, s, id){
+            var js, fjs = d.getElementsByTagName(s)[0];
+            if (d.getElementById(id)) {return;}
+            js = d.createElement(s); js.id = id;
+            js.src = "//connect.facebook.net/en_US/sdk.js";
+            fjs.parentNode.insertBefore(js, fjs);
+            }(document, 'script', 'facebook-jssdk'));
+            
+            //call this function on click of FB button
+            function fb_login() {
+            FB.login( function(response)
+             {
+            console.log(response);
+             if (response.status === 'connected') 
+              {
+                //share status to FB
+                FB.ui({
+                method: 'share',
+                title: "Current stock Price of "+cName+" is $"+lastPrice,
+                href: 'http://www-scf.usc.edu/~agowda/Assignment8/main.html',
+                caption: "LAST TRADE PRICE: $"+lastPrice+", CHANGE: "+change+"("+changePercent+"%)",
+                picture: url,
+                description: "Stock Information of  "+cName+"("+sym+")",
+                }, 
+                function(response){
+                if (response && !response.error_message && response != "") {
+                alert('Posted succesfully.');
+                } else {
+                alert('Not posted.');
+                }
+                });
+              }
+             else
+                {
+                 console.log("Not logged in!"); 
+                }
+             },{scope: 'public_profile,email'});
+            
+            }
+    </script>
+    <br/>
+    <div class="container">
+      <div class="well">
+          <h4>Stock Market Search</h4>
+          <br/>
+          <form class="form-inline" id="form">
+                <div class="form-group col-md-3 pull-left">
+                    <label class="control-label" for="input">Enter the stock name or symbol:<span id="ast">*</span></label>
+                </div>
+                   
+                <div class="form-group col-md-5 pull-left">
+                    <input type="text" class="form-control ui-widget" id="symbolName" name="symbolName" placeholder="Apple Inc or AAPL" required x-moz-errormessage="Please enter name or symbol"> 
+                </div>
+
+                <div class="form-group col-md-4">
+                <button type="submit" class="btn btn-primary btn-sm" name="submit" value="yes">
+                    <span class="glyphicon glyphicon-search"></span> Get Quote
+                </button>
+                <button type="reset" class="btn btn-default btn-sm" name="clear">
+                    <span class="glyphicon glyphicon-refresh"></span> Clear
+                </button>
+                </div>
+          </form>
+        <br/><br/><br>
+        <div id="displayMsg"></div>
+        <div class="col-md-offset-8">
+              <b>Powered By: </b><a href="http://dev.markitondemand.com/MODApis/" target="_blank"><img src="http://cs-server.usc.edu:45678/hw/hw8/images/mod-logo.png" width="175px" alt="Image cannot be loaded!"></a>  
+        </div>
+      </div>
+      <hr/>
+      <div class="well">
+        <div id="carousel-generic" class="carousel slide" data-ride="carousel" data-interval="false">
+      <!-- Wrapper for slides -->
+      <div class="carousel-inner" role="listbox">
+        <div class="item active">
+          <div class="panel panel-default">
+            <div class="panel-heading">
+                <p><b>Favorite List</b>
+                
+                <span class="pull-right"><span class="hidden-xs">Automatic Refresh:</span> 
+                <input type="checkbox" class="checkbox" data-toggle="toggle" size="small">
+                <button type="button" class="btn btn-default btn-sm grey">
+                    <span class="glyphicon glyphicon-refresh"></span></button>
+                <button type="button" class="btn btn-default btn-sm right grey" data-slide="next">
+                    <span class="glyphicon glyphicon-chevron-right"></span></button>
+                </span>
+                </p>
+           </div>
+          </div>
+        </div>
+        <div class="item">
+          <div class="panel panel-default">
+            <div class="panel-heading">
+              <button type="button" class="btn btn-default btn-sm right grey" data-slide="prev">
+              <span class="glyphicon glyphicon-chevron-left"></span></button>
+              <span><b>Stock Details</b></span>
+            </div>
+            <div class="panel-body">
+                <div id="tabs">
+                    <ul class="nav nav-pills hidden-xs">
+                        <li class="active"><a href="#stocks" data-toggle="pill"><i class="glyphicon glyphicon-dashboard"></i> Current Stock</a></li>
+                        <li><a href="#charts" data-toggle="pill"><i class="glyphicon glyphicon-stats"></i> Historical Charts</a></li>
+                        <li><a href="#stats" data-toggle="pill"><i class="glyphicon glyphicon-link"></i> News Feeds</a></li>
+                    </ul>
+                    <ul class="nav nav-pills visible-xs">
+                        <li class="active"><a href="#stocks" data-toggle="pill"><i class="glyphicon glyphicon-dashboard"></i> Stock</a></li>
+                        <li><a href="#charts" data-toggle="pill"><i class="glyphicon glyphicon-stats"></i> Charts</a></li>
+                        <li><a href="#stats" data-toggle="pill"><i class="glyphicon glyphicon-link"></i> News</a></li>
+                    </ul>
+                </div>
+                
+              <hr/>
+            <div class="tab-content">
+                <div id="stocks" class="tab-pane active">
+                   <div class="row">
+                        <div class="col-md-6 col-xs-6">
+                            <b>Stock Details</b>
+                            <div id='current'></div>
+                        </div>
+                        <div class="col-md-6">
+                            <span class="pull-right col-xs-6">
+                            <a href="#" onclick="fb_login();"><img src="http://www-scf.usc.edu/~agowda/Assignment8/FB_Icon.PNG" alt="Image can not be loaded!"></a>
+                            <button><a href="#"><img src="http://www-scf.usc.edu/~agowda/Assignment8/Fav_Not_Selected.PNG" alt="Image can not be loaded!"></a></button>
+                            </span>
+                    <br/>
+                            <div id='graph'>   
+                            </div>
+                        </div>
+                   </div>   
+                </div>
+                
+                <div id="charts" class="tab-pane">
+                    <div id="chartDisplay"></div>
+                    
+                </div>
+                
+                <div id="stats" class="tab-pane">
+                    <div id="news"></div>
+                </div> 
+            </div>
+                
+                
+                
+            
+            
+            </div>
+          </div>    
+            
+        </div>
+      </div>
+      </div>
+    </div>
+    </div>
+    </body>  
+    </html>

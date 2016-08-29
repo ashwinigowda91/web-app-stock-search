@@ -1,0 +1,33 @@
+body
+{
+    background : #295C8F;
+}
+.panel-body
+{
+    min-height : 50;
+    max-height : 50;
+}
+#ast
+{
+    color : red;
+}
+h4
+{
+    text-align : center;
+}
+.well
+{
+    background : white;
+}
+#displayMsg
+{
+    color : red;
+}
+#current
+{
+    padding-top: 50px;
+}
+input[type="text"]
+{
+    width: 100%;
+}
